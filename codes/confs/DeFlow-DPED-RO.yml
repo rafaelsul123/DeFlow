@@ -1,5 +1,5 @@
 #### general settings
-name: DeFlow-DPED-RO
+name: DeFlow-DPED-RO_iphone_vs_DSLR
 use_tb_logger: true
 model: SRFL_Glow
 distortion: sr
@@ -13,9 +13,9 @@ datasets:
     name: Iphone_DSLR_tr
     mode: LQGT_multiclass
 
-    dataroot_GT: [ ../datasets/DPED-RO/DPEDiphone-tr-x/4x/,  # DSLR clean 4x
+    dataroot_GT: [ ../datasets/DPED-RO/DPEDiphone-tr-x/4x/,           # DSLR clean 4x
                    ../datasets/DPED-RO/DPEDiphone-tr-y/1x/ ]          # iphone clean 1x
-    dataroot_LQ: [ ../datasets/DPED-RO/DPEDiphone-tr-x/16x/, # DSLR clean 16x
+    dataroot_LQ: [ ../datasets/DPED-RO/DPEDiphone-tr-x/16x/,          # DSLR clean 16x
                    ../datasets/DPED-RO/DPEDiphone-tr-y/4x/ ]          # iphone clean 4x
 
     # setup that didn't work well for DPED-RO:
@@ -39,9 +39,9 @@ datasets:
     name: Iphone_DSLR_va
     mode: LQGT_multiclass
 
-    dataroot_GT: [ ../datasets/DPED-RO/DPEDiphone-val-x/4x/,   # DSLR clean 4x
+    dataroot_GT: [ ../datasets/DPED-RO/DPEDiphone-val-x/4x/,            # DSLR clean 4x
                    ../datasets/DPED-RO/DPEDiphone-val-y/1x/ ]           # iphone clean 1x
-    dataroot_LQ: [ ../datasets/DPED-RO/DPEDiphone-val-x/16x/,  # DSLR clean 16x
+    dataroot_LQ: [ ../datasets/DPED-RO/DPEDiphone-val-x/16x/,           # DSLR clean 16x
                    ../datasets/DPED-RO/DPEDiphone-val-y/4x/ ]           # iphone clean 4x
 
     # setup that didn't work well for DPED-RO:
@@ -104,9 +104,10 @@ train:
   warmup_iter: -1  # no warm up
   lr_steps_rel: [0.5, 0.75, 0.9, 0.95]
   lr_gamma: 0.5
+  weight_vgg_loss : 1
 
-  niter: 100000
-  val_freq: 20000
+  niter: 10000
+  val_freq: 2000
 
 #### validation settings
 val:
@@ -117,3 +118,6 @@ val:
 logger:
   print_freq: 100
   save_checkpoint_freq: !!float 5e3
+
+#### perceptual loss during train/val
+is_vgg_loss: True

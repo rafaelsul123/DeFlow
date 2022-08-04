@@ -12,6 +12,7 @@ import models.networks as networks
 import models.lr_scheduler as lr_scheduler
 import models.modules.Split
 from .base_model import BaseModel
+from models.modules.vgg_perceptual_loss import VGGPerceptualLoss
 
 logger = logging.getLogger('base')
 
@@ -26,6 +27,7 @@ class SRFLGLOWModel(BaseModel):
         self.hr_size = opt_get(opt, ['datasets', 'train', 'center_crop_hr_size'])
         self.hr_size = 160 if self.hr_size is None else self.hr_size
         self.lr_size = self.hr_size // opt['scale']
+        self.is_vgg_loss = opt['is_vgg_loss']
 
         if opt['dist']:
             self.rank = torch.distributed.get_rank()
@@ -39,6 +41,8 @@ class SRFLGLOWModel(BaseModel):
             self.netG = DistributedDataParallel(self.netG, device_ids=[torch.cuda.current_device()])
         else:
             self.netG = DataParallel(self.netG)
+        if self.is_vgg_loss:
+            self.netVGG = VGGPerceptualLoss(self.device).to(self.device)
         # print network
         self.print_network()
         self.load()
@@ -137,11 +141,25 @@ class SRFLGLOWModel(BaseModel):
 
         losses = {}
         weight_fl = opt_get(self.opt, ['train', 'weight_fl'])
+        weight_vgg_loss = opt_get(self.opt, ['train', 'weight_vgg_loss'])
         weight_fl = 1 if weight_fl is None else weight_fl
+        weight_vgg_loss = 1 if weight_vgg_loss is None else weight_vgg_loss
         if weight_fl > 0:
-            _, nll, _ = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label)
+            z, nll, _ = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label)
             nll_loss = torch.mean(nll)
             losses['nll_loss'] = nll_loss * weight_fl
+            if self.is_vgg_loss:
+                vgg_loss_accumulated = 0
+                for i in len(self.y_label):
+                    if self.y_label[i] == 0:
+                        translated = self.get_translate_with_zs(zs=z[i], lq=self.var_L[i], source_labels=self.y_label[i],
+                                                                lr_enc=lr_enc[i], heat=1.0)
+                        # TODO get sr from z output given here + decode it to sr - check validate.py for reference
+                        vgg_loss = self.netVGG(translated, self.realY[i])
+                        vgg_loss = torch.mean(vgg_loss)
+                        vgg_loss_accumulated = vgg_loss_accumulated + vgg_loss.item()
+
+                losses['vgg_loss'] = vgg_loss * weight_vgg_loss
 
         total_loss = sum(losses.values())
         total_loss.backward()
