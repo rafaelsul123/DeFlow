@@ -27,7 +27,8 @@ class SRFLGLOWModel(BaseModel):
         self.hr_size = opt_get(opt, ['datasets', 'train', 'center_crop_hr_size'])
         self.hr_size = 160 if self.hr_size is None else self.hr_size
         self.lr_size = self.hr_size // opt['scale']
-        self.is_vgg_loss = opt['is_vgg_loss']
+        self.is_vgg_loss = opt['vgg_loss']['is_vgg_loss']
+        self.print_vgg_loss = opt['vgg_loss']['print_vgg_loss']
 
         if opt['dist']:
             self.rank = torch.distributed.get_rank()
@@ -118,8 +119,11 @@ class SRFLGLOWModel(BaseModel):
                     self.optimizer_G.param_groups[1]['params'].append(v)
         assert len(self.optimizer_G.param_groups[1]['params']) > 0
 
-    def feed_data(self, data, need_GT=True):
+    def feed_data(self, data, GT_for_y = None, need_GT = True):
+        # sys.exit()
         self.var_L = data['LQ'].to(self.device)  # LQ
+        if GT_for_y is not None:
+            self.GT_for_y = GT_for_y.to(self.device)
         if need_GT:
             self.real_H = data['GT'].to(self.device)  # GT
         
@@ -145,22 +149,30 @@ class SRFLGLOWModel(BaseModel):
         weight_fl = 1 if weight_fl is None else weight_fl
         weight_vgg_loss = 1 if weight_vgg_loss is None else weight_vgg_loss
         if weight_fl > 0:
-            z, nll, _ = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label)
+            z, nll, _, lr_enc = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label)
             nll_loss = torch.mean(nll)
             losses['nll_loss'] = nll_loss * weight_fl
             if self.is_vgg_loss:
+                feature_layers = opt_get(self.opt, ['vgg_loss', 'feature_layers'])
+                zs, _ = self.get_encode_z_and_nll(lq=self.var_L, gt=self.real_H, y_label=self.y_label,
+                                                  lr_enc=lr_enc, epses=[])
                 vgg_loss_accumulated = 0
-                for i in len(self.y_label):
+                translated = self.get_translate_with_zs(zs=zs, lq=self.var_L,
+                                                        source_labels=self.y_label,
+                                                        lr_enc=lr_enc, heat=1.0)
+                count = 0
+                for i in range(len(self.y_label)):
                     if self.y_label[i] == 0:
-                        translated = self.get_translate_with_zs(zs=z[i], lq=self.var_L[i], source_labels=self.y_label[i],
-                                                                lr_enc=lr_enc[i], heat=1.0)
-                        # TODO get sr from z output given here + decode it to sr - check validate.py for reference
-                        vgg_loss = self.netVGG(translated, self.realY[i])
+                        count += 1
+                        vgg_loss = self.netVGG(translated[i], self.GT_for_y[i], feature_layers=feature_layers)
                         vgg_loss = torch.mean(vgg_loss)
                         vgg_loss_accumulated = vgg_loss_accumulated + vgg_loss.item()
 
-                losses['vgg_loss'] = vgg_loss * weight_vgg_loss
-
+                if count != 0:
+                    vgg_loss_accumulated = vgg_loss_accumulated / count
+                losses['vgg_loss'] = vgg_loss_accumulated * weight_vgg_loss
+        if self.print_vgg_loss:
+            print("VGG loss: {}".format(losses['vgg_loss']), "NLL loss: {}".format(losses['nll_loss']))
         total_loss = sum(losses.values())
         total_loss.backward()
 
@@ -199,14 +211,14 @@ class SRFLGLOWModel(BaseModel):
         self.netG.eval()
 
         with torch.no_grad():
-            epses, nll, _ = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label, epses=[])
+            epses, nll, _, _ = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label, epses=[])
         self.netG.train()
         return nll.mean().item(), epses, self.y_label
 
     def get_encode_nll(self, lq, gt, y_label=None):
         self.netG.eval()
         with torch.no_grad():
-            _, nll, _ = self.netG(gt=gt, lr=lq, reverse=False, y_label=y_label)
+            _, nll, _, _ = self.netG(gt=gt, lr=lq, reverse=False, y_label=y_label)
         self.netG.train()
         return nll.mean().item()
 
@@ -216,14 +228,14 @@ class SRFLGLOWModel(BaseModel):
     def get_encode_z(self, lq, gt, epses=None, add_gt_noise=True, y_label=None, lr_enc=None):
         self.netG.eval()
         with torch.no_grad():
-            z, _, _ = self.netG(gt=gt, lr=lq, reverse=False, epses=epses, add_gt_noise=add_gt_noise, y_label=y_label, lr_enc=lr_enc)
+            z, _, _, _ = self.netG(gt=gt, lr=lq, reverse=False, epses=epses, add_gt_noise=add_gt_noise, y_label=y_label, lr_enc=lr_enc)
         self.netG.train()
         return z
 
     def get_encode_z_and_nll(self, lq, gt, epses=None, y_label=None, add_gt_noise=True, lr_enc=None):
         self.netG.eval()
         with torch.no_grad():
-            z, nll, _ = self.netG(gt=gt, lr=lq, reverse=False, epses=epses, y_label=y_label, add_gt_noise=add_gt_noise, lr_enc=lr_enc)
+            z, nll, _, _ = self.netG(gt=gt, lr=lq, reverse=False, epses=epses, y_label=y_label, add_gt_noise=add_gt_noise, lr_enc=lr_enc)
         self.netG.train()
         return z, nll
 

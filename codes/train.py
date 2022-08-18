@@ -198,7 +198,7 @@ def main():
 
     ram = process.memory_info().rss / (2 ** 30)
     print('RAM usage:', ram)
-
+    dataset_length = len(os.listdir(opt['datasets']['train']['dataroot_GT'][0]))
 
     for epoch in range(start_epoch, total_epochs + 1):
         if opt['dist']:
@@ -214,7 +214,27 @@ def main():
             if current_step <= total_iters:
 
                 #### training
-                model.feed_data(train_data)
+                if opt['is_vgg_loss']:
+                    GT_for_y = train_data['GT']
+                    subset_indices = []
+                    # print(train_data['GT_path'])
+                    for index, data in enumerate(train_data['GT_path']):
+                        photo_num = (((train_data['GT_path'][index].split('/'))[-1]).split('.'))[0]
+                        subset_indices.append(int(photo_num) + dataset_length)
+                        # print("subset_indices", subset_indices)
+                        # print("photo_num", photo_num)
+                    subset = torch.utils.data.Subset(train_set, subset_indices)
+                    train_subset_loader = torch.utils.data.DataLoader(subset,
+                                                                      batch_size=opt['datasets']['train']['batch_size'],
+                                                                      num_workers=0,
+                                                                      shuffle=False)
+                    for _, train_data2 in enumerate(train_subset_loader):
+                        GT_for_y = train_data2['GT']
+                    # print(train_data2['GT_path'])
+                else:
+                    GT_for_y = train_data['GT']
+
+                model.feed_data(train_data, GT_for_y)
 
                 #### update learning rate
                 model.update_learning_rate(current_step, warmup_iter=opt['train']['warmup_iter'])
