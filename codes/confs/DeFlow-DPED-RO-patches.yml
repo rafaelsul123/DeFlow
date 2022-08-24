@@ -19,10 +19,10 @@ datasets:
 
     n_workers: 0  # per GPU
     preload: False # set true to load images into ram for faster training
-    batch_size: 1
+    batch_size: 2
     balanced: True
     use_shuffle: true
-    use_flip: true
+    use_flip: False
     use_crop: true
     color: RGB
     GT_size: 96
@@ -50,7 +50,7 @@ datasets:
 
     n_workers: 0  # per GPU
     preload: False # set true to load images into ram for faster training
-    batch_size: 1
+    batch_size: 2
     balanced: True
     use_shuffle: true
     use_flip: False
@@ -110,9 +110,9 @@ train:
   lr_steps_rel: [0.5, 0.75, 0.9, 0.95]
   lr_gamma: 0.5
   dslr_forH: True
-  vgg_loss: True
+  vgg_loss: False
   niter: 70000
-  val_freq: 500
+  val_freq: 2000
 
 #### validation settings
 val:

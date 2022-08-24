@@ -19,21 +19,17 @@ def rgb(t, denormalize_f):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    #parser.add_argument('-opt', required=True, help='path to config .yml file')
-    #parser.add_argument('-model_path', required=True, help='path to model checkpoint (.pkl)')
-    #parser.add_argument('-out_dir', default=None, help='save directory of translated images')
-    #parser.add_argument('-crop_size', type=int, default=256, help='')
-    #parser.add_argument('-n_max', type=int, default=10, help='number of images to translate, if not specified all validation images are translated')
+    parser.add_argument('-opt', required=True, help='path to config .yml file')
+    parser.add_argument('-model_path', required=True, help='path to model checkpoint (.pkl)')
+    parser.add_argument('-out_dir', default=None, help='save directory of translated images')
+    parser.add_argument('-crop_size', type=int, default=256, help='')
+    parser.add_argument('-n_max', type=int, default=10, help='number of images to translate, if not specified all validation images are translated')
     add_gt_noise = True # apply quantization noise
     args = parser.parse_args()
-    args.crop_size=256
-    args.n_max=5
-    args.out_dir = None
-    args.opt='D:\\Deep_Project\\Deflow_Oren\\DeFlow\\codes\\confs\\DeFlow-DPED-RO.yml'
-    args.model_path = 'D:\\Deep_Project\\DeFlow\\trained_models\\DeFlow-DPED-RWSR-100k.pth'
+
     if args.out_dir is None:
         args.out_dir = f'../results/{args.opt[:-4]}-{args.model_path.split("/")[-1][:-4]}{"-"+str(args.crop_size) if args.crop_size else ""}/'
-        args.out_dir='D:/DeFlow/results'
+
     os.makedirs(args.out_dir, exist_ok=True)
     os.makedirs(args.out_dir+'/0_to_1', exist_ok=True)
     os.makedirs(args.out_dir+'/1_to_0', exist_ok=True)
@@ -41,8 +37,7 @@ if __name__ == "__main__":
     os.makedirs(args.out_dir+'/1_gen', exist_ok=True)
 
     model = create_model(util.getPredictorOdict(os.path.join("confs/", args.opt), args.model_path))
-    #opt = option.parse("confs/" + args.opt, is_train=True)
-    opt = option.parse(args.opt, is_train=True)
+    opt = option.parse("confs/" + args.opt, is_train=True)
     device = model.netG.module.mean_shift.device
 
     dataset_opt = opt['datasets']['val']

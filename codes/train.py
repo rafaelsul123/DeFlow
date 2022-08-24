@@ -351,7 +351,7 @@ def main():
                 n_visual = 20
 
                 for idx, val_data in enumerate(val_loader):
-                    model.feed_data(val_data,val_data['LQ'])
+                    model.feed_data(val_data,val_data['LQ'],None,None)
 
                     nll, epses, y_label = model.test()
                     if nll is None:
