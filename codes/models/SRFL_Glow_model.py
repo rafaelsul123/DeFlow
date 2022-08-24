@@ -1,6 +1,6 @@
 import logging
 from collections import OrderedDict
-
+import sys
 from torch._C import device, dtype
 
 from utils.util import get_resume_paths, opt_get
@@ -119,11 +119,15 @@ class SRFLGLOWModel(BaseModel):
                     self.optimizer_G.param_groups[1]['params'].append(v)
         assert len(self.optimizer_G.param_groups[1]['params']) > 0
 
-    def feed_data(self, data, GT_for_y = None, need_GT = True):
-        # sys.exit()
+
+    def feed_data(self, data,dslr_forH,iphone_patches,canon_patches,need_GT=True):
+
+        #sys.exit()
         self.var_L = data['LQ'].to(self.device)  # LQ
-        if GT_for_y is not None:
-            self.GT_for_y = GT_for_y.to(self.device)
+        self.dslr_forH=dslr_forH.to(self.device)
+        self.iphone_patches=iphone_patches
+        self.canon_patches=canon_patches
+
         if need_GT:
             self.real_H = data['GT'].to(self.device)  # GT
         
@@ -149,7 +153,13 @@ class SRFLGLOWModel(BaseModel):
         weight_fl = 1 if weight_fl is None else weight_fl
         weight_vgg_loss = 1 if weight_vgg_loss is None else weight_vgg_loss
         if weight_fl > 0:
+
             z, nll, _, lr_enc = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label)
+
+            # print(self.dslr_forH.size())
+            # print(self.real_H.size())
+            # _, nll, _, _ = self.netG(gt=self.real_H, lr=self.dslr_forH, reverse=False, y_label=self.y_label) #TODO check if this is hardcoded or ok as is
+
             nll_loss = torch.mean(nll)
             losses['nll_loss'] = nll_loss * weight_fl
             if self.is_vgg_loss:
