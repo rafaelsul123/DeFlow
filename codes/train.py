@@ -238,6 +238,10 @@ def main():
     ram = process.memory_info().rss / (2 ** 30)
     print('RAM usage:', ram)
     dataset_length = len(os.listdir(opt['datasets']['train']['dataroot_GT'][0]))
+    patches_dataset_length = len(os.listdir(opt['datasets']['patches']['dataroot_GT'][0]))
+    iphone_patches = None
+    canon_patches = None
+    BATCH_SIZE = opt['datasets']['train']['batch_size']
 
     for epoch in range(start_epoch, total_epochs + 1):
         if opt['dist']:
@@ -253,8 +257,8 @@ def main():
             if current_step <= total_iters:
 
                 #### training
-                '''     # TODO: integrate this
-                if opt['is_vgg_loss']:
+
+                if opt['train']['vgg_loss']['is_vgg_loss']:
                     GT_for_y = train_data['GT']
                     subset_indices = []
                     # print(train_data['GT_path'])
@@ -265,46 +269,54 @@ def main():
                         # print("photo_num", photo_num)
                     subset = torch.utils.data.Subset(train_set, subset_indices)
                     train_subset_loader = torch.utils.data.DataLoader(subset,
-                                                                      batch_size=opt['datasets']['train']['batch_size'],
+                                                                      batch_size=BATCH_SIZE,
                                                                       num_workers=0,
                                                                       shuffle=False)
                     for _, train_data2 in enumerate(train_subset_loader):
                         GT_for_y = train_data2['GT']
                     # print(train_data2['GT_path'])
+
+                    if opt['train']['vgg_loss']['patches_vgg_exclusive']:
+                        canon_patches_subset_indices = [random.randint(0, int(patches_dataset_length)) for i in
+                                                        range(BATCH_SIZE)]
+                        canon_patches_subset = torch.utils.data.Subset(patches_train_set, canon_patches_subset_indices)
+                        canon_patches_train_subset_loader = torch.utils.data.DataLoader(canon_patches_subset,
+                                                                                        batch_size=BATCH_SIZE,
+                                                                                        num_workers=0, shuffle=False)
+
+                        iphone_patches_subset_indices = [canon_patches_subset_indices[i] +
+                                                         int(patches_dataset_length) for i in
+                                                         range(len(canon_patches_subset_indices))]
+                        iphone_patches_subset = torch.utils.data.Subset(patches_train_set, iphone_patches_subset_indices)
+                        iphone_patches_train_subset_loader = torch.utils.data.DataLoader(iphone_patches_subset,
+                                                                                         batch_size=BATCH_SIZE,
+                                                                                         num_workers=0, shuffle=False)
+                        # TODO: what was intended here?
+                        for _, canon_patches in enumerate(canon_patches_train_subset_loader):
+                            pass
+
+                        for _, iphone_patches in enumerate(iphone_patches_train_subset_loader):
+                            pass
+
                 else:
-                    GT_for_y = train_data['GT']
+                    GT_for_y = None
 
-                model.feed_data(train_data, GT_for_y)
-
+                # model.feed_data(train_data, GT_for_y)
                 dslr_forH = train_data['LQ']
-                iphone_patches=None
-                canon_patches=None
                 subset_indices=[]
 
                 if opt['train']['dslr_forH']:
-                    for index,data in enumerate(train_data['LQ_path']):
-                        photo_num=(((train_data['LQ_path'][index].split('/'))[-1]).split('.'))[0]
-                        photo_num=int(photo_num)
+                    for index, data in enumerate(train_data['LQ_path']):
+                        photo_num = (((train_data['LQ_path'][index].split('/'))[-1]).split('.'))[0]
+                        photo_num = int(photo_num)
                         subset_indices.append(int(photo_num))
                     subset = torch.utils.data.Subset(train_set, subset_indices)
-                    train_subset_loader = torch.utils.data.DataLoader(subset,batch_size=opt['datasets']['train']['batch_size'], num_workers=0,shuffle=False)
-                    for _,train_data2 in enumerate(train_subset_loader):
+                    train_subset_loader = torch.utils.data.DataLoader(subset, batch_size=BATCH_SIZE,
+                                                                      num_workers=0, shuffle=False)
+                    for _, train_data2 in enumerate(train_subset_loader):
                         dslr_forH = train_data2['LQ']
-                '''
 
-                if opt['train']['vgg_loss']:
-                    canon_patches_subset_indices=[random.randint(0,int(len(os.listdir(opt['datasets']['patches']['dataroot_GT'][0])))) for i in range(opt['datasets']['train']['batch_size'])]
-                    canon_patches_subset = torch.utils.data.Subset(patches_train_set, canon_patches_subset_indices)
-                    canon_patches_train_subset_loader = torch.utils.data.DataLoader(canon_patches_subset, batch_size=opt['datasets']['train']['batch_size'], num_workers=0, shuffle=False)
-                    iphone_patches_subset_indices=[canon_patches_subset_indices[i] + int(len(os.listdir(opt['datasets']['patches']['dataroot_GT'][0]))) for i in range(len(canon_patches_subset_indices))]
-                    iphone_patches_subset = torch.utils.data.Subset(patches_train_set, iphone_patches_subset_indices)
-                    iphone_patches_train_subset_loader = torch.utils.data.DataLoader(iphone_patches_subset, batch_size=opt['datasets']['train']['batch_size'], num_workers=0, shuffle=False)
-                    for _,canon_patches in enumerate(canon_patches_train_subset_loader):
-                        pass
-
-                    for _,iphone_patches in enumerate(iphone_patches_train_subset_loader):
-                        pass
-                model.feed_data(train_data,dslr_forH,iphone_patches,canon_patches)
+                model.feed_data(train_data, dslr_forH, iphone_patches, canon_patches, GT_for_y)
 
 
                 #### update learning rate
@@ -312,8 +324,6 @@ def main():
                 nll = None
                 
                 nll = model.optimize_parameters(current_step)
-
-                    
 
                 if nll is None:
                     nll = 0

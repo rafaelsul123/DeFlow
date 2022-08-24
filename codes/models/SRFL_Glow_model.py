@@ -27,7 +27,7 @@ class SRFLGLOWModel(BaseModel):
         self.hr_size = opt_get(opt, ['datasets', 'train', 'center_crop_hr_size'])
         self.hr_size = 160 if self.hr_size is None else self.hr_size
         self.lr_size = self.hr_size // opt['scale']
-        self.is_vgg_loss = opt['vgg_loss']['is_vgg_loss']
+        self.is_vgg_loss = opt['train']['vgg_loss']['is_vgg_loss']
         self.print_vgg_loss = opt['vgg_loss']['print_vgg_loss']
 
         if opt['dist']:
@@ -119,14 +119,16 @@ class SRFLGLOWModel(BaseModel):
                     self.optimizer_G.param_groups[1]['params'].append(v)
         assert len(self.optimizer_G.param_groups[1]['params']) > 0
 
-
-    def feed_data(self, data,dslr_forH,iphone_patches,canon_patches,need_GT=True):
+    def feed_data(self, data, dslr_forH, iphone_patches, canon_patches, GT_for_y, need_GT=True, ):
 
         #sys.exit()
         self.var_L = data['LQ'].to(self.device)  # LQ
-        self.dslr_forH=dslr_forH.to(self.device)
-        self.iphone_patches=iphone_patches
-        self.canon_patches=canon_patches
+        self.dslr_forH = dslr_forH.to(self.device)
+        self.iphone_patches = iphone_patches.to(self.device)    # Not None only if training with full size photos
+        self.canon_patches = canon_patches.to(self.device)      # Not None only if training with full size photos
+
+        if GT_for_y is not None:
+            self.GT_for_y = GT_for_y.to(self.device)  # GT for y labels, to be used in vgg loss / conceptual loss
 
         if need_GT:
             self.real_H = data['GT'].to(self.device)  # GT
@@ -158,7 +160,7 @@ class SRFLGLOWModel(BaseModel):
 
             # print(self.dslr_forH.size())
             # print(self.real_H.size())
-            # _, nll, _, _ = self.netG(gt=self.real_H, lr=self.dslr_forH, reverse=False, y_label=self.y_label) #TODO check if this is hardcoded or ok as is
+            # _, nll, _, _ = self.netG(gt=self.real_H, lr=self.dslr_forH, reverse=False, y_label=self.y_label) # TODO check if this is hardcoded or ok as is
 
             nll_loss = torch.mean(nll)
             losses['nll_loss'] = nll_loss * weight_fl
