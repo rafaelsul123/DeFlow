@@ -153,8 +153,8 @@ class RRDBGlowNet(nn.Module):
         nll = (-objective) / float(np.log(2.) * pixels)
 
         if isinstance(epses, list):
-            return epses, nll, logdet
-        return z, nll, logdet
+            return epses, nll, logdet, lr_enc
+        return z, nll, logdet, lr_enc
 
     def reverse_flow(self, lr, z, y_onehot, eps_std, epses=None, lr_enc=None, add_gt_noise=True):
         # decode

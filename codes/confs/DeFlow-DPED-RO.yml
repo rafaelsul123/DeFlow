@@ -1,5 +1,5 @@
 #### general settings
-name: DeFlow-DPED-RO
+name: vgg_loss_block3
 use_tb_logger: true
 model: SRFL_Glow
 distortion: sr
@@ -17,7 +17,19 @@ datasets:
     dataroot_LQ: [ D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/canon/16x/,
                    D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/iphone/4x/ ]
 
-    n_workers: 0  # per GPU
+    dataroot_GT: [ ../datasets/DPED-RO-SORTED/DPEDiphone-tr-x/4x/,           # DSLR clean 4x
+                   ../datasets/DPED-RO-SORTED/DPEDiphone-tr-y/1x/ ]          # iphone clean 1x
+    dataroot_LQ: [ ../datasets/DPED-RO-SORTED/DPEDiphone-tr-x/16x/,          # DSLR clean 16x
+                   ../datasets/DPED-RO-SORTED/DPEDiphone-tr-y/4x/ ]          # iphone clean 4x
+
+    # setup that didn't work well for DPED-RO:
+#    dataroot_GT: [ ../datasets/DPED-RO/DPEDiphone-tr-y/4x/,
+#                   ../datasets/DPED-RO/DPEDiphone-tr-x/1x/ ]
+#    dataroot_LQ: [ ../datasets/DPED-RO/DPEDiphone-tr-y/16x/,
+#                   ../datasets/DPED-RO/DPEDiphone-tr-x/4x_reshaped/ ]
+
+    n_workers: 3  # per GPU
+
     preload: False # set true to load images into ram for faster training
     batch_size: 2
     balanced: True
@@ -30,11 +42,20 @@ datasets:
     
   val:
     name: Iphone_DSLR_va
-    mode: LQGT_multiclass 
-    dataroot_GT: [D:/Deep_Project/DeFlow/datasets/DPED-RWSR/validation/canon/4x/,
-                  D:/Deep_Project/DeFlow/datasets/DPED-RWSR/validation/iphone/1x]
-    dataroot_LQ: [D:/Deep_Project/DeFlow/datasets/DPED-RWSR/validation/canon/16x/,
-                  D:/Deep_Project/DeFlow/datasets/DPED-RWSR/validation/iphone/4x/]
+
+    mode: LQGT_multiclass
+
+    dataroot_GT: [ ../datasets/DPED-RO-SORTED/DPEDiphone-val-x/4x/,            # DSLR clean 4x
+                   ../datasets/DPED-RO-SORTED/DPEDiphone-val-y/1x/ ]           # iphone clean 1x
+    dataroot_LQ: [ ../datasets/DPED-RO-SORTED/DPEDiphone-val-x/16x/,           # DSLR clean 16x
+                   ../datasets/DPED-RO-SORTED/DPEDiphone-val-y/4x/ ]           # iphone clean 4x
+
+    # setup that didn't work well for DPED-RO:
+#    dataroot_GT: [../datasets/DPED-RO/DPEDiphone-val-y/4x/,
+#                  ../datasets/DPED-RO/DPEDiphone-val-x/1x]
+#    dataroot_LQ: [../datasets/DPED-RO/DPEDiphone-val-y/16x/,
+#                  ../datasets/DPED-RO/DPEDiphone-val-x/4x_reshaped/]
+
     preload: False # set true to load images into ram for faster training
     center_crop_hr_size: 160
     quant: 32
@@ -109,10 +130,15 @@ train:
   warmup_iter: -1  # no warm up
   lr_steps_rel: [0.5, 0.75, 0.9, 0.95]
   lr_gamma: 0.5
+
+  weight_vgg_loss : 10
+
+  niter: 10000
+  val_freq: 1000
+
   dslr_forH: False
-  vgg_loss: True
-  niter: 70000
-  val_freq: 500
+  vgg_loss: True #TODO fix this reference
+
 
 #### validation settings
 val:
@@ -123,3 +149,10 @@ val:
 logger:
   print_freq: 100
   save_checkpoint_freq: !!float 5e3
+
+#### perceptual loss during train/val
+vgg_loss:
+  is_vgg_loss: True
+  feature_layers: [3]
+  print_vgg_loss: True
+
