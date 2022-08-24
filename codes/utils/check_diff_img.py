@@ -7,15 +7,14 @@ import PIL.Image as Image
 import cv2
 import os
 
-im_path1 = 'D:/DeFlow/DeFlow/datasets/DPED-RO/DPEDiphone-tr-x/1x/'
-im_path2 = 'D:/DeFlow/DeFlow/datasets/DPED-RO/DPEDiphone-tr-y/1x/'
+im_path1 = 'D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/canon/16x/'
+im_path2 = 'D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/iphone/4x/'
 
-paths = ['D:/DeFlow/DeFlow/datasets/DPED-RO/DPEDiphone-tr-x/1x/',
-         'D:/DeFlow/DeFlow/datasets/DPED-RO/DPEDiphone-tr-x/4x/',
-         'D:/DeFlow/DeFlow/datasets/DPED-RO/DPEDiphone-tr-x/16x/',
-         'D:/DeFlow/DeFlow/datasets/DPED-RO/DPEDiphone-tr-y/1x/',
-         'D:/DeFlow/DeFlow/datasets/DPED-RO/DPEDiphone-tr-y/4x/',
-         'D:/DeFlow/DeFlow/datasets/DPED-RO/DPEDiphone-tr-y/16x/']
+paths = ['D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/canon/1x/',
+         'D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/canon/4x/',
+         'D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/canon/16x/',
+         'D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/iphone/1x/',
+         'D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/iphone/4x/']
 
 # im1 = cv2.imread(im_path1)
 # im2 = cv2.imread(im_path2)
@@ -59,7 +58,7 @@ def delete_none_common(paths, differences):
 
 if __name__ == "__main__":
     difference_list = compare_img_lists(im_path1, im_path2)
-    with open(r'D:/DeFlow/DeFlow/datasets/DPED-RO/comparison.txt', 'w') as fp:
+    with open(r'D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/comparison.txt', 'w') as fp:
         for item in difference_list:
             # write each item on a new line
             fp.write("%s\n" % item)

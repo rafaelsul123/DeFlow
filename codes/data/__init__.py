@@ -14,7 +14,7 @@ def imread(path):
 
 def create_dataloader(dataset, dataset_opt, opt=None, sampler=None):
     phase = dataset_opt.get('phase', 'test')
-    if phase == 'train':
+    if phase == 'train' or phase=='patches':
         gpu_ids = opt.get('gpu_ids', None)
         gpu_ids = gpu_ids if gpu_ids else []
         if opt['dist']:
@@ -30,9 +30,14 @@ def create_dataloader(dataset, dataset_opt, opt=None, sampler=None):
             return torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                            num_workers=num_workers, sampler=sampler, drop_last=True,
                                            pin_memory=False)
+            # return torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0,
+            #                                pin_memory=True)
         return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
                                            num_workers=num_workers, sampler=sampler, drop_last=True,
                                            pin_memory=False)
+        # return torch.utils.data.DataLoader(dataset, batch_size=1,
+        #                                    shuffle=False, num_workers=0,
+        #                                    pin_memory=True)
     else:
         return torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0,
                                            pin_memory=True)
