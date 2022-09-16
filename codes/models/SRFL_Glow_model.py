@@ -159,17 +159,14 @@ class SRFLGLOWModel(BaseModel):
         weight_fl = 1 if weight_fl is None else weight_fl
         weight_vgg_loss = 1 if weight_vgg_loss is None else weight_vgg_loss
         if weight_fl > 0:
-
-            z, nll, _, lr_enc = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label)
-
-            # print(self.dslr_forH.size())
-            # print(self.real_H.size())
-            # _, nll, _, _ = self.netG(gt=self.real_H, lr=self.dslr_forH, reverse=False, y_label=self.y_label) # TODO check if this is hardcoded or ok as is
+            if self.dslr_forH is not None:
+                _, nll, _, _ = self.netG(gt=self.real_H, lr=self.dslr_forH, reverse=False, y_label=self.y_label)
+            else:
+                z, nll, _, lr_enc = self.netG(gt=self.real_H, lr=self.var_L, reverse=False, y_label=self.y_label)
 
             nll_loss = torch.mean(nll)
             losses['nll_loss'] = nll_loss * weight_fl
             if self.is_vgg_loss:
-                transform = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.52, 0.52, 0.52])
                 feature_layers = opt_get(self.opt, ['train', 'vgg_loss', 'feature_layers'])
                 zs, _ = self.get_encode_z_and_nll(lq=self.var_L, gt=self.real_H, y_label=self.y_label,
                                                   lr_enc=lr_enc, epses=[])
@@ -177,7 +174,7 @@ class SRFLGLOWModel(BaseModel):
                 translated = self.get_translate_with_zs(zs=zs, lq=self.var_L,
                                                         source_labels=self.y_label,
                                                         lr_enc=lr_enc, heat=1.0)
-
+                '''
                 if self.opt['train']['vgg_loss']['type'] == 'lpips':
                     lpips = LearnedPerceptualImagePatchSimilarity(net_type='vgg').to(self.device)
                     translated1 = transform(translated)
@@ -185,18 +182,19 @@ class SRFLGLOWModel(BaseModel):
                     vgg_loss = lpips(translated1, real_h)
                     vgg_loss = torch.mean(vgg_loss)
                     losses['vgg_loss'] = vgg_loss * weight_vgg_loss
-                else:
-                    count = 0
-                    for i in range(len(self.y_label)):
-                        if self.y_label[i] == 0:
-                            count += 1
-                            vgg_loss = self.netVGG(translated[i], self.GT_for_y[i], feature_layers=feature_layers)
-                            vgg_loss = torch.mean(vgg_loss)
-                            vgg_loss_accumulated = vgg_loss_accumulated + vgg_loss.item()
+                '''
 
-                    if count != 0:
-                        vgg_loss_accumulated = vgg_loss_accumulated / count
-                    losses['vgg_loss'] = vgg_loss_accumulated * weight_vgg_loss
+                count = 0
+                for i in range(len(self.y_label)):
+                    if self.y_label[i] == 0:
+                        count += 1
+                        vgg_loss = self.netVGG(translated[i], self.GT_for_y[i], feature_layers=feature_layers)
+                        vgg_loss = torch.mean(vgg_loss)
+                        vgg_loss_accumulated = vgg_loss_accumulated + vgg_loss.item()
+
+                if count != 0:
+                    vgg_loss_accumulated = vgg_loss_accumulated / count
+                losses['vgg_loss'] = -vgg_loss_accumulated * weight_vgg_loss
 
         total_loss = sum(losses.values())
         total_loss.backward()

@@ -116,7 +116,7 @@ train:
   vgg_loss:
     patches_vgg_exclusive: False
     is_vgg_loss: True
-    type: lpips
+    type: none
     feature_layers: [ 3 ]
     print_vgg_loss: True
     weight_vgg_loss : 10

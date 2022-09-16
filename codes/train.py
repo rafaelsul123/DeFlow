@@ -293,7 +293,7 @@ def main():
                         iphone_patches_train_subset_loader = torch.utils.data.DataLoader(iphone_patches_subset,
                                                                                          batch_size=BATCH_SIZE,
                                                                                          num_workers=0, shuffle=False)
-                        # TODO: what was intended here?
+
                         for _, canon_patches in enumerate(canon_patches_train_subset_loader):
                             pass
 
