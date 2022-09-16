@@ -168,45 +168,47 @@ def main():
             if rank <= 0:
                 logger.info('Number of val images in [{:s}]: {:d}'.format(
                     dataset_opt['name'], len(val_set)))
+
         elif phase == 'patches':
-            patches_train_set = create_dataset(dataset_opt)
-            print('Patches Dataset created')
-            train_size = int(
-                math.floor(len(patches_train_set) / dataset_opt['batch_size']))
-            total_iters = int(opt['train']['niter'])
-            total_epochs = int(math.ceil(total_iters / train_size))
-            if opt['dist']:
-                patches_train_sampler = DistIterSampler(patches_train_set, world_size, rank,
-                                                dataset_ratio)
-                total_epochs = int(
-                    math.ceil(total_iters / (train_size * dataset_ratio)))
-            elif opt_get(opt, ['datasets', 'patches', 'balanced'], False):
-                labels = np.asarray(patches_train_set.y_labels)
-                unique, counts = np.unique(labels, return_counts=True)
-                print('balancing classes', dict(zip(unique, counts)))
-                weights = np.zeros_like(labels).astype(float)
-                for class_id, count in zip(unique, counts):
-                    weights[labels == class_id] = len(weights) / count
-                    print('class:', class_id, 'count:', count, 'total:',
-                          len(weights), 'weight:', len(weights) / count,
-                          'real', weights[labels == class_id].mean())
-                print('weights.shape', weights.shape)
-                patches_train_sampler = torch.utils.data.WeightedRandomSampler(weights,
-                                                                       num_samples=len(
-                                                                           weights),
-                                                                       replacement=True)
-            else:
-                patches_train_sampler = None
+            if opt['train']['vgg_loss']['patches_vgg_exclusive']:
+                patches_train_set = create_dataset(dataset_opt)
+                print('Patches Dataset created')
+                train_size = int(
+                    math.floor(len(patches_train_set) / dataset_opt['batch_size']))
+                total_iters = int(opt['train']['niter'])
+                total_epochs = int(math.ceil(total_iters / train_size))
+                if opt['dist']:
+                    patches_train_sampler = DistIterSampler(patches_train_set, world_size, rank,
+                                                    dataset_ratio)
+                    total_epochs = int(
+                        math.ceil(total_iters / (train_size * dataset_ratio)))
+                elif opt_get(opt, ['datasets', 'patches', 'balanced'], False):
+                    labels = np.asarray(patches_train_set.y_labels)
+                    unique, counts = np.unique(labels, return_counts=True)
+                    print('balancing classes', dict(zip(unique, counts)))
+                    weights = np.zeros_like(labels).astype(float)
+                    for class_id, count in zip(unique, counts):
+                        weights[labels == class_id] = len(weights) / count
+                        print('class:', class_id, 'count:', count, 'total:',
+                              len(weights), 'weight:', len(weights) / count,
+                              'real', weights[labels == class_id].mean())
+                    print('weights.shape', weights.shape)
+                    patches_train_sampler = torch.utils.data.WeightedRandomSampler(weights,
+                                                                           num_samples=len(
+                                                                               weights),
+                                                                           replacement=True)
+                else:
+                    patches_train_sampler = None
 
-            patches_train_loader = create_dataloader(patches_train_set, dataset_opt, opt,
-                                         patches_train_sampler)
+                patches_train_loader = create_dataloader(patches_train_set, dataset_opt, opt,
+                                             patches_train_sampler)
 
-            if rank <= 0:
-                logger.info(
-                    'Number of train images: {:,d}, iters: {:,d}'.format(
-                        len(train_set), train_size))
-                logger.info('Total epochs needed: {:d} for iters {:,d}'.format(
-                    total_epochs, total_iters))
+                if rank <= 0:
+                    logger.info(
+                        'Number of train images: {:,d}, iters: {:,d}'.format(
+                            len(train_set), train_size))
+                    logger.info('Total epochs needed: {:d} for iters {:,d}'.format(
+                        total_epochs, total_iters))
 
         else:
             raise NotImplementedError('Phase [{:s}] is not recognized.'.format(phase))
@@ -302,7 +304,7 @@ def main():
                     GT_for_y = None
 
                 # model.feed_data(train_data, GT_for_y)
-                dslr_forH = train_data['LQ']
+                dslr_forH = None
                 subset_indices=[]
 
                 if opt['train']['dslr_forH']:
@@ -385,7 +387,7 @@ def main():
                 n_visual = 20
 
                 for idx, val_data in enumerate(val_loader):
-                    model.feed_data(val_data,val_data['LQ'],None,None)
+                    model.feed_data(val_data, val_data['LQ'], None, None, None)
 
                     nll, epses, y_label = model.test()
                     if nll is None:

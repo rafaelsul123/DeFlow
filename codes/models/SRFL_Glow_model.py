@@ -13,6 +13,8 @@ import models.lr_scheduler as lr_scheduler
 import models.modules.Split
 from .base_model import BaseModel
 from models.modules.vgg_perceptual_loss import VGGPerceptualLoss
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+from torchvision import transforms
 
 logger = logging.getLogger('base')
 
@@ -28,7 +30,7 @@ class SRFLGLOWModel(BaseModel):
         self.hr_size = 160 if self.hr_size is None else self.hr_size
         self.lr_size = self.hr_size // opt['scale']
         self.is_vgg_loss = opt['train']['vgg_loss']['is_vgg_loss']
-        self.print_vgg_loss = opt['vgg_loss']['print_vgg_loss']
+        self.print_vgg_loss = opt['train']['vgg_loss']['print_vgg_loss']
 
         if opt['dist']:
             self.rank = torch.distributed.get_rank()
@@ -122,14 +124,16 @@ class SRFLGLOWModel(BaseModel):
     def feed_data(self, data, dslr_forH, iphone_patches, canon_patches, GT_for_y, need_GT=True, ):
 
         #sys.exit()
-        self.var_L = data['LQ'].to(self.device)  # LQ
-        self.dslr_forH = dslr_forH.to(self.device)
-        self.iphone_patches = iphone_patches.to(self.device)    # Not None only if training with full size photos
-        self.canon_patches = canon_patches.to(self.device)      # Not None only if training with full size photos
-
+        if dslr_forH is not None:
+            self.dslr_forH = dslr_forH.to(self.device)              # Not None only if training with dslr_forH
+        if iphone_patches is not None:
+            self.iphone_patches = iphone_patches.to(self.device)    # Not None only if training with full size photos
+        if canon_patches is not None:
+            self.canon_patches = canon_patches.to(self.device)      # Not None only if training with full size photos
         if GT_for_y is not None:
-            self.GT_for_y = GT_for_y.to(self.device)  # GT for y labels, to be used in vgg loss / conceptual loss
+            self.GT_for_y = GT_for_y.to(self.device)        # GT for y labels, to be used in vgg loss / conceptual loss
 
+        self.var_L = data['LQ'].to(self.device)  # LQ
         if need_GT:
             self.real_H = data['GT'].to(self.device)  # GT
         
@@ -151,7 +155,7 @@ class SRFLGLOWModel(BaseModel):
 
         losses = {}
         weight_fl = opt_get(self.opt, ['train', 'weight_fl'])
-        weight_vgg_loss = opt_get(self.opt, ['train', 'weight_vgg_loss'])
+        weight_vgg_loss = opt_get(self.opt, ['train', 'vgg_loss', 'weight_vgg_loss'])
         weight_fl = 1 if weight_fl is None else weight_fl
         weight_vgg_loss = 1 if weight_vgg_loss is None else weight_vgg_loss
         if weight_fl > 0:
@@ -165,28 +169,41 @@ class SRFLGLOWModel(BaseModel):
             nll_loss = torch.mean(nll)
             losses['nll_loss'] = nll_loss * weight_fl
             if self.is_vgg_loss:
-                feature_layers = opt_get(self.opt, ['vgg_loss', 'feature_layers'])
+                transform = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.52, 0.52, 0.52])
+                feature_layers = opt_get(self.opt, ['train', 'vgg_loss', 'feature_layers'])
                 zs, _ = self.get_encode_z_and_nll(lq=self.var_L, gt=self.real_H, y_label=self.y_label,
                                                   lr_enc=lr_enc, epses=[])
                 vgg_loss_accumulated = 0
                 translated = self.get_translate_with_zs(zs=zs, lq=self.var_L,
                                                         source_labels=self.y_label,
                                                         lr_enc=lr_enc, heat=1.0)
-                count = 0
-                for i in range(len(self.y_label)):
-                    if self.y_label[i] == 0:
-                        count += 1
-                        vgg_loss = self.netVGG(translated[i], self.GT_for_y[i], feature_layers=feature_layers)
-                        vgg_loss = torch.mean(vgg_loss)
-                        vgg_loss_accumulated = vgg_loss_accumulated + vgg_loss.item()
 
-                if count != 0:
-                    vgg_loss_accumulated = vgg_loss_accumulated / count
-                losses['vgg_loss'] = vgg_loss_accumulated * weight_vgg_loss
-        if self.print_vgg_loss:
-            print("VGG loss: {}".format(losses['vgg_loss']), "NLL loss: {}".format(losses['nll_loss']))
+                if self.opt['train']['vgg_loss']['type'] == 'lpips':
+                    lpips = LearnedPerceptualImagePatchSimilarity(net_type='vgg').to(self.device)
+                    translated1 = transform(translated)
+                    real_h = transform(self.real_H)
+                    vgg_loss = lpips(translated1, real_h)
+                    vgg_loss = torch.mean(vgg_loss)
+                    losses['vgg_loss'] = vgg_loss * weight_vgg_loss
+                else:
+                    count = 0
+                    for i in range(len(self.y_label)):
+                        if self.y_label[i] == 0:
+                            count += 1
+                            vgg_loss = self.netVGG(translated[i], self.GT_for_y[i], feature_layers=feature_layers)
+                            vgg_loss = torch.mean(vgg_loss)
+                            vgg_loss_accumulated = vgg_loss_accumulated + vgg_loss.item()
+
+                    if count != 0:
+                        vgg_loss_accumulated = vgg_loss_accumulated / count
+                    losses['vgg_loss'] = vgg_loss_accumulated * weight_vgg_loss
+
         total_loss = sum(losses.values())
         total_loss.backward()
+
+        if self.print_vgg_loss:
+            print("VGG loss: {}".format(losses['vgg_loss']), "NLL loss: {}".format(losses['nll_loss']),
+                  "Total loss: {}".format(total_loss))
 
         found_nan = False
         if not torch.isfinite(total_loss):

@@ -1,5 +1,5 @@
 #### general settings
-name: DeFlow-DPED-RO
+name: patches-lpips
 use_tb_logger: true
 model: SRFL_Glow
 distortion: sr
@@ -12,14 +12,14 @@ datasets:
   train:
     name: Iphone_DSLR_tr
     mode: LQGT_multiclass
-    dataroot_GT: [ D:/Deep_Project/DeFlow/datasets/DPED patches/train/canon/1x/,
-                   D:/Deep_Project/DeFlow/datasets/DPED patches/train/iphone/1x/ ]
-    dataroot_LQ: [ D:/Deep_Project/DeFlow/datasets/DPED patches/train/canon/4x/,
-                   D:/Deep_Project/DeFlow/datasets/DPED patches/train/iphone/4x/ ]
+    dataroot_GT: [../datasets/DPED patches/iphone/training_data/canon/1x/,
+                  ../datasets/DPED patches/iphone/training_data/iphone/1x/]
+    dataroot_LQ: [../datasets/DPED patches/iphone/training_data/canon/4x/,
+                  ../datasets/DPED patches/iphone/training_data/iphone/4x/]
 
-    n_workers: 0  # per GPU
+    n_workers: 4  # per GPU
     preload: False # set true to load images into ram for faster training
-    batch_size: 2
+    batch_size: 16
     balanced: True
     use_shuffle: true
     use_flip: False
@@ -30,11 +30,12 @@ datasets:
     
   val:
     name: Iphone_DSLR_va
-    mode: LQGT_multiclass 
-    dataroot_GT: [D:/Deep_Project/DeFlow/datasets/DPED patches/validation/canon/1x/,
-                  D:/Deep_Project/DeFlow/datasets/DPED patches/validation/iphone/1x]
-    dataroot_LQ: [D:/Deep_Project/DeFlow/datasets/DPED patches/validation/canon/4x/,
-                  D:/Deep_Project/DeFlow/datasets/DPED patches/validation/iphone/4x/]
+    mode: LQGT_multiclass
+    dataroot_GT: [ ../datasets/DPED patches/iphone/test_data/patches/canon/1x/,
+                   ../datasets/DPED patches/iphone/test_data/patches/iphone/1x/ ]
+    dataroot_LQ: [ ../datasets/DPED patches/iphone/test_data/patches/canon/4x/,
+                   ../datasets/DPED patches/iphone/test_data/patches/iphone/4x/ ]
+
     preload: False # set true to load images into ram for faster training
     center_crop_hr_size: 96
     quant: 32
@@ -43,14 +44,14 @@ datasets:
   patches:
     name: Patches_Iphone_DSLR_tr
     mode: LQGT_multiclass
-    dataroot_GT: [ D:/Deep_Project/DeFlow/datasets/DPED patches/train/canon/1x/,
-                   D:/Deep_Project/DeFlow/datasets/DPED patches/train/iphone/1x/ ]
-    dataroot_LQ: [ D:/Deep_Project/DeFlow/datasets/DPED patches/train/canon/4x/,
-                   D:/Deep_Project/DeFlow/datasets/DPED patches/train/iphone/4x/ ]
+    dataroot_GT: [../datasets/DPED patches/iphone/training_data/canon/1x/,
+                  ../datasets/DPED patches/iphone/training_data/iphone/1x/]
+    dataroot_LQ: [../datasets/DPED patches/iphone/training_data/canon/4x/,
+                  ../datasets/DPED patches/iphone/training_data/iphone/4x/]
 
-    n_workers: 0  # per GPU
+    n_workers: 4  # per GPU
     preload: False # set true to load images into ram for faster training
-    batch_size: 2
+    batch_size: 16
     balanced: True
     use_shuffle: true
     use_flip: False
@@ -94,7 +95,7 @@ network_G:
 #### path
 path:
   root: D:/DeFlow/DeFlow/codes
-  pretrain_model_G: D:/Deep_Project/DeFlow/trained_models/RRDB_models/RRDB_PSNR_x4.pth
+  pretrain_model_G: ../trained_models/RRDB_models/RRDB_PSNR_x4.pth
   strict_load: true
   resume_state: auto
 
@@ -109,10 +110,16 @@ train:
   warmup_iter: -1  # no warm up
   lr_steps_rel: [0.5, 0.75, 0.9, 0.95]
   lr_gamma: 0.5
-  dslr_forH: True
-  vgg_loss: False
-  niter: 70000
+  dslr_forH: False
+  niter: 20000
   val_freq: 2000
+  vgg_loss:
+    patches_vgg_exclusive: False
+    is_vgg_loss: True
+    type: lpips
+    feature_layers: [ 3 ]
+    print_vgg_loss: True
+    weight_vgg_loss : 10
 
 #### validation settings
 val:

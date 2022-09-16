@@ -15,9 +15,9 @@ datasets:
     ## we do not use the given high quality images 
     ## as we found that the scenes are too different
     ## instead we treat 4x downsampled low-quality images as the high quality images  
-    dataroot_GT: [../datasets/DPED-RWSR/DPEDiphone-tr-x/4x/, 
+    dataroot_GT: [../datasets/DPED-RWSR/DPEDiphone-tr-x/4x/,
                   ../datasets/DPED-RWSR/DPEDiphone-tr-x/1x/]
-    dataroot_LQ: [../datasets/DPED-RWSR/DPEDiphone-tr-x/16x/, 
+    dataroot_LQ: [../datasets/DPED-RWSR/DPEDiphone-tr-x/16x/,
                   ../datasets/DPED-RWSR/DPEDiphone-tr-x/4x/]
     n_workers: 3  # per GPU
     preload: False # set true to load images into ram for faster training

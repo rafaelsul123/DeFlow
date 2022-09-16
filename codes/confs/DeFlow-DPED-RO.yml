@@ -12,11 +12,6 @@ datasets:
   train:
     name: Iphone_DSLR_tr
     mode: LQGT_multiclass
-    dataroot_GT: [ D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/canon/4x/,
-                   D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/iphone/1x/ ]
-    dataroot_LQ: [ D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/canon/16x/,
-                   D:/Deep_Project/DeFlow/datasets/DPED-RWSR/train/iphone/4x/ ]
-
     dataroot_GT: [ ../datasets/DPED-RO-SORTED/DPEDiphone-tr-x/4x/,           # DSLR clean 4x
                    ../datasets/DPED-RO-SORTED/DPEDiphone-tr-y/1x/ ]          # iphone clean 1x
     dataroot_LQ: [ ../datasets/DPED-RO-SORTED/DPEDiphone-tr-x/16x/,          # DSLR clean 16x
@@ -31,7 +26,7 @@ datasets:
     n_workers: 3  # per GPU
 
     preload: False # set true to load images into ram for faster training
-    batch_size: 2
+    batch_size: 8
     balanced: True
     use_shuffle: true
     use_flip: true
@@ -130,8 +125,6 @@ train:
   warmup_iter: -1  # no warm up
   lr_steps_rel: [0.5, 0.75, 0.9, 0.95]
   lr_gamma: 0.5
-
-  weight_vgg_loss : 10
 
   niter: 10000
   val_freq: 1000
