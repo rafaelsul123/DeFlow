@@ -126,6 +126,8 @@ class SRFLGLOWModel(BaseModel):
         #sys.exit()
         if dslr_forH is not None:
             self.dslr_forH = dslr_forH.to(self.device)              # Not None only if training with dslr_forH
+        else:
+            self.dslr_forH = None
         if iphone_patches is not None:
             self.iphone_patches = iphone_patches.to(self.device)    # Not None only if training with full size photos
         if canon_patches is not None:
